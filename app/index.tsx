@@ -10,38 +10,38 @@ import {
 } from 'react-native';
 import { useState } from 'react';
 import React from 'react';
-import { supabase } from '~/utils/supabase';
+import { useSystem } from '~/powersync/PowerSync';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { supabaseConnector } = useSystem();
 
   // Sign in with email and password
   const onSignInPress = async () => {
     setLoading(true);
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) Alert.alert(error.message);
-    setLoading(false);
+    try {
+      // Use the PowerSync specific login method
+      await supabaseConnector.login(email, password);
+    } catch (error: any) {
+      Alert.alert(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Create a new user
   const onSignUpPress = async () => {
     setLoading(true);
+
     const {
       data: { session },
       error,
-    } = await supabase.auth.signUp({
+    } = await supabaseConnector.client.auth.signUp({
       email: email,
       password: password,
     });
-
-    console.log(error);
 
     if (error) {
       Alert.alert(error.message);

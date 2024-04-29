@@ -7,52 +7,39 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { supabase } from '~/utils/supabase';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import AppleStyleSwipeableRow from '~/components/SwipeableRow';
-import { Todo } from '~/models/todos';
+import { Todo } from '~/models/todo';
+import { useSystem } from '~/powersync/PowerSync';
+import { usePowerSyncWatchedQuery } from '@powersync/react-native';
 
 const Page = () => {
-  const [todo, setTodo] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [todos, setTodos] = useState<Todo[]>([]);
-
-  // Load todos on start
-  useEffect(() => {
-    loadTodos();
-  }, []);
+  const [task, setTask] = useState('');
+  const todos = usePowerSyncWatchedQuery<Todo[]>(`SELECT * FROM todos`);
+  const { supabaseConnector, powersync } = useSystem();
 
   const addTodo = async () => {
-    const {
-      data: { user: User },
-    } = await supabase.auth.getUser();
-
-    const newTodo = {
-      user_id: User?.id,
-      task: todo,
-    };
-
-    setLoading(true);
-    const result = await supabase.from('todos').insert(newTodo).select().single();
-
-    setTodos([result.data, ...todos]);
-    setLoading(false);
-    setTodo('');
+    const { userID } = await supabaseConnector.fetchCredentials();
+    await powersync.execute(
+      `INSERT INTO todos (id, task, user_id) VALUES (uuid(), ?, ?) RETURNING *`,
+      [task, userID]
+    );
+    setTask('');
   };
 
-  // Get all data from the todos table
-  const loadTodos = async () => {
-    let { data } = await supabase
-      .from('todos')
-      .select('*')
-      .order('modified_at', { ascending: false });
-    console.log(data);
-
-    setTodos(data || []);
+  const updateTodo = async (todo: Todo) => {
+    await powersync.execute(`UPDATE todos SET is_complete = ? WHERE id = ? RETURNING *`, [
+      !todo.is_complete,
+      todo.id,
+    ]);
   };
 
-  const renderRow: ListRenderItem<Todo> = ({ item }) => {
+  const deleteTodo = async (todo: Todo) => {
+    await powersync.execute(`DELETE FROM todos WHERE id = ?`, [todo.id]);
+  };
+
+  const renderRow: ListRenderItem<any> = ({ item }) => {
     return (
       <AppleStyleSwipeableRow
         onDelete={() => deleteTodo(item)}
@@ -60,58 +47,39 @@ const Page = () => {
         todo={item}>
         <View style={{ padding: 12, flexDirection: 'row', gap: 10, height: 44 }}>
           <Text style={{ flex: 1 }}>{item.task}</Text>
-          {item.is_complete && <Ionicons name="checkmark-done-outline" size={24} color="#00d5ff" />}
+          {item.is_complete === 1 && (
+            <Ionicons name="checkmark-done-outline" size={24} color="#00d5ff" />
+          )}
         </View>
       </AppleStyleSwipeableRow>
     );
-  };
-
-  const updateTodo = async (todo: Todo) => {
-    const result = await supabase
-      .from('todos')
-      .update({ is_complete: !todo.is_complete })
-      .eq('id', todo.id)
-      .select()
-      .single();
-
-    const updated = todos.map((item) => {
-      if (item.id === todo.id) {
-        item.is_complete = result.data.is_complete;
-      }
-      return item;
-    });
-    setTodos(updated);
-  };
-
-  const deleteTodo = async (todo: Todo) => {
-    await supabase.from('todos').delete().eq('id', todo.id);
-    const updated = todos.filter((item) => item.id !== todo.id);
-    setTodos(updated);
   };
 
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.inputRow}>
         <TextInput
-          placeholder="Add Todo"
+          placeholder="Add new task"
           style={styles.input}
-          value={todo}
-          onChangeText={setTodo}
+          value={task}
+          onChangeText={setTask}
         />
-        <TouchableOpacity onPress={addTodo} disabled={loading || todo === ''}>
+        <TouchableOpacity onPress={addTodo} disabled={task === ''}>
           <Ionicons name="add-outline" size={24} color="#A700FF" />
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={todos}
-        renderItem={renderRow}
-        ItemSeparatorComponent={() => (
-          <View
-            style={{ height: StyleSheet.hairlineWidth, width: '100%', backgroundColor: 'gray' }}
-          />
-        )}
-      />
+      {todos && (
+        <FlatList
+          data={todos}
+          renderItem={renderRow}
+          ItemSeparatorComponent={() => (
+            <View
+              style={{ height: StyleSheet.hairlineWidth, width: '100%', backgroundColor: 'gray' }}
+            />
+          )}
+        />
+      )}
     </View>
   );
 };
