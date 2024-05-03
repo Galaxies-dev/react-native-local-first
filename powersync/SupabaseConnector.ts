@@ -32,9 +32,6 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
     this.client = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         storage: AsyncStorage,
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false,
       },
     });
   }
@@ -72,8 +69,6 @@ export class SupabaseConnector implements PowerSyncBackendConnector {
   }
 
   async uploadData(database: AbstractPowerSyncDatabase): Promise<void> {
-    console.log('uploadData');
-
     const transaction = await database.getNextCrudTransaction();
 
     if (!transaction) {
