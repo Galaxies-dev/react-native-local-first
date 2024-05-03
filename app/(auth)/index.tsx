@@ -7,36 +7,72 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import AppleStyleSwipeableRow from '~/components/SwipeableRow';
-import { Todo } from '~/models/todo';
 import { useSystem } from '~/powersync/PowerSync';
-import { usePowerSyncWatchedQuery } from '@powersync/react-native';
+import { TODOS_TABLE, Todo } from '~/powersync/AppSchema';
+import { uuid } from '~/powersync/uuid';
 
 const Page = () => {
   const [task, setTask] = useState('');
-  const todos = usePowerSyncWatchedQuery<Todo[]>(`SELECT * FROM todos`);
-  const { supabaseConnector, powersync } = useSystem();
+  const { supabaseConnector, db } = useSystem();
+  const [todos, setTodos] = useState<Todo[]>([]);
+
+  useEffect(() => {
+    loadTodos();
+  }, []);
+
+  const loadTodos = async () => {
+    console.log('Loading todos');
+    try {
+      const result = await db.selectFrom(TODOS_TABLE).selectAll().execute();
+      console.log('🚀 ~ loadTodos ~ result:', result);
+      setTodos(result);
+    } catch (error) {
+      console.error('Error loading todos:', error);
+    }
+  };
 
   const addTodo = async () => {
     const { userID } = await supabaseConnector.fetchCredentials();
-    await powersync.execute(
-      `INSERT INTO todos (id, task, user_id) VALUES (uuid(), ?, ?) RETURNING *`,
-      [task, userID]
-    );
-    setTask('');
+    const todoId = uuid();
+    console.log('🚀 ~ addTodo ~ todoId:', todoId);
+    try {
+      const result = await db
+        .insertInto(TODOS_TABLE)
+        .values({ id: todoId, task, user_id: userID, is_complete: 0, modified_at: '' })
+        .execute();
+      console.log('Inserted', result);
+      setTask('');
+      loadTodos();
+    } catch (error) {
+      console.error('Error adding todo:', error);
+    }
   };
 
   const updateTodo = async (todo: Todo) => {
-    await powersync.execute(`UPDATE todos SET is_complete = ? WHERE id = ? RETURNING *`, [
-      !todo.is_complete,
-      todo.id,
-    ]);
+    try {
+      await db
+        .updateTable(TODOS_TABLE)
+        .where('id', '=', todo.id)
+        .set({ is_complete: todo.is_complete === 1 ? 0 : 1 })
+        .execute();
+      loadTodos();
+    } catch (error) {
+      console.error('Error updating todo:', error);
+    }
   };
 
   const deleteTodo = async (todo: Todo) => {
-    await powersync.execute(`DELETE FROM todos WHERE id = ?`, [todo.id]);
+    try {
+      const result = await db.deleteFrom(TODOS_TABLE).where('id', '=', todo.id).execute();
+      console.log('Deleted', result);
+
+      loadTodos();
+    } catch (error) {
+      console.error('Error deleting todo:', error);
+    }
   };
 
   const renderRow: ListRenderItem<any> = ({ item }) => {

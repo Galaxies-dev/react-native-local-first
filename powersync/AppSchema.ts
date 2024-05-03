@@ -1,13 +1,17 @@
-import { Column, ColumnType, Schema, Table } from '@powersync/react-native';
+import { column, Schema, TableV2 } from '@powersync/react-native';
 
-export const AppSchema = new Schema([
-  new Table({
-    name: 'todos',
-    columns: [
-      new Column({ name: 'task', type: ColumnType.TEXT }),
-      new Column({ name: 'is_complete', type: ColumnType.INTEGER }),
-      new Column({ name: 'modified_at', type: ColumnType.TEXT }),
-      new Column({ name: 'user_id', type: ColumnType.TEXT }),
-    ],
-  }),
-]);
+export const TODOS_TABLE = 'todos';
+
+const todos = new TableV2({
+  task: column.text,
+  user_id: column.text,
+  modified_at: column.text,
+  is_complete: column.integer,
+});
+
+export const AppSchema = new Schema({
+  todos,
+});
+
+export type Database = (typeof AppSchema)['types'];
+export type Todo = Database['todos'];
