@@ -5,7 +5,6 @@ export const TODOS_TABLE = 'todos';
 const todos = new TableV2({
   task: column.text,
   user_id: column.text,
-  modified_at: column.text,
   is_complete: column.integer,
 });
 

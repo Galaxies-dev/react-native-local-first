@@ -14,14 +14,15 @@
     "@azure/core-asynciterator-polyfill": "^1.0.2",
     "@expo/vector-icons": "^14.0.0",
     "@journeyapps/react-native-quick-sqlite": "^1.1.5",
-    "@powersync/kysely-driver": "^0.1.9",
-    "@powersync/react-native": "^1.4.3",
+    "@powersync/kysely-driver": "^0.2.0",
+    "@powersync/react-native": "^1.4.5",
     "@react-native-async-storage/async-storage": "1.21.0",
     "@react-navigation/native": "^6.1.7",
     "@supabase/supabase-js": "^2.38.4",
     "base-64": "^1.0.0",
     "expo": "^50.0.17",
     "expo-constants": "~15.4.5",
+    "expo-crypto": "~12.8.1",
     "expo-dev-client": "~3.3.11",
     "expo-linking": "~6.2.2",
     "expo-router": "^3.4.7",
@@ -42,8 +43,7 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.19.10",
     "text-encoding": "^0.7.0",
-    "web-streams-polyfill": "3.2.1",
-    "expo-crypto": "~12.8.1"
+    "web-streams-polyfill": "3.2.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

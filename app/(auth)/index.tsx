@@ -24,55 +24,35 @@ const Page = () => {
   }, []);
 
   const loadTodos = async () => {
-    console.log('Loading todos');
-    try {
-      const result = await db.selectFrom(TODOS_TABLE).selectAll().execute();
-      console.log('🚀 ~ loadTodos ~ result:', result);
-      setTodos(result);
-    } catch (error) {
-      console.error('Error loading todos:', error);
-    }
+    const result = await db.selectFrom(TODOS_TABLE).selectAll().execute();
+    setTodos(result);
   };
 
   const addTodo = async () => {
     const { userID } = await supabaseConnector.fetchCredentials();
     const todoId = uuid();
-    console.log('🚀 ~ addTodo ~ todoId:', todoId);
-    try {
-      const result = await db
-        .insertInto(TODOS_TABLE)
-        .values({ id: todoId, task, user_id: userID, is_complete: 0, modified_at: '' })
-        .execute();
-      console.log('Inserted', result);
-      setTask('');
-      loadTodos();
-    } catch (error) {
-      console.error('Error adding todo:', error);
-    }
+
+    await db
+      .insertInto(TODOS_TABLE)
+      .values({ id: todoId, task, user_id: userID, is_complete: 0 })
+      .execute();
+
+    setTask('');
+    loadTodos();
   };
 
   const updateTodo = async (todo: Todo) => {
-    try {
-      await db
-        .updateTable(TODOS_TABLE)
-        .where('id', '=', todo.id)
-        .set({ is_complete: todo.is_complete === 1 ? 0 : 1 })
-        .execute();
-      loadTodos();
-    } catch (error) {
-      console.error('Error updating todo:', error);
-    }
+    await db
+      .updateTable(TODOS_TABLE)
+      .where('id', '=', todo.id)
+      .set({ is_complete: todo.is_complete === 1 ? 0 : 1 })
+      .execute();
+    loadTodos();
   };
 
   const deleteTodo = async (todo: Todo) => {
-    try {
-      const result = await db.deleteFrom(TODOS_TABLE).where('id', '=', todo.id).execute();
-      console.log('Deleted', result);
-
-      loadTodos();
-    } catch (error) {
-      console.error('Error deleting todo:', error);
-    }
+    const result = await db.deleteFrom(TODOS_TABLE).where('id', '=', todo.id).execute();
+    loadTodos();
   };
 
   const renderRow: ListRenderItem<any> = ({ item }) => {

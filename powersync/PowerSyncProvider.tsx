@@ -4,13 +4,11 @@ import { ReactNode, useMemo } from 'react';
 import { useSystem } from '~/powersync/PowerSync';
 
 export const PowerSyncProvider = ({ children }: { children: ReactNode }) => {
-  const { powersync, db } = useSystem();
+  const { powersync } = useSystem();
 
-  const database = useMemo(() => {
-    // Types of db do not match the expected types of PowerSyncContext.Provider
-    return db as any;
-    // return powersync;
+  const db = useMemo(() => {
+    return powersync;
   }, []);
 
-  return <PowerSyncContext.Provider value={database}>{children}</PowerSyncContext.Provider>;
+  return <PowerSyncContext.Provider value={db}>{children}</PowerSyncContext.Provider>;
 };
