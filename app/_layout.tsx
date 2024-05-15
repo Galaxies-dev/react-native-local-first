@@ -1,8 +1,7 @@
+import { supabase } from '~/utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { useSystem } from '~/powersync/PowerSync';
-import { PowerSyncProvider } from '~/powersync/PowerSyncProvider';
 
 const InitialLayout = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -11,17 +10,10 @@ const InitialLayout = () => {
   const segments = useSegments();
   const router = useRouter();
 
-  const { supabaseConnector } = useSystem();
-  const system = useSystem();
-
-  useEffect(() => {
-    system.init();
-  }, []);
-
   useEffect(() => {
     // Listen for changes to authentication state
-    const { data } = supabaseConnector.client.auth.onAuthStateChange(async (event, session) => {
-      console.log('supabase.auth.onAuthStateChange', event, session);
+    const { data } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // console.log('supabase.auth.onAuthStateChange', event, session);
       setSession(session);
       setInitialized(true);
     });
@@ -48,12 +40,4 @@ const InitialLayout = () => {
   return <Slot />;
 };
 
-const RootLayout = () => {
-  return (
-    <PowerSyncProvider>
-      <InitialLayout />
-    </PowerSyncProvider>
-  );
-};
-
-export default RootLayout;
+export default InitialLayout;

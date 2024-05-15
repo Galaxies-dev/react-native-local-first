@@ -7,55 +7,58 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import { supabase } from '~/utils/supabase';
 import { useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import AppleStyleSwipeableRow from '~/components/SwipeableRow';
-import { useSystem } from '~/powersync/PowerSync';
-import { TODOS_TABLE, Todo } from '~/powersync/AppSchema';
-import { uuid } from '~/powersync/uuid';
+
+interface Todo {
+  id: string;
+  user_id: string;
+  task: string;
+  is_complete: boolean;
+}
 
 const Page = () => {
-  const [task, setTask] = useState('');
-  const { supabaseConnector, db } = useSystem();
+  const [todo, setTodo] = useState('');
+  const [loading, setLoading] = useState(false);
   const [todos, setTodos] = useState<Todo[]>([]);
 
+  // Load todos on start
   useEffect(() => {
     loadTodos();
   }, []);
 
-  const loadTodos = async () => {
-    const result = await db.selectFrom(TODOS_TABLE).selectAll().execute();
-    setTodos(result);
-  };
-
   const addTodo = async () => {
-    const { userID } = await supabaseConnector.fetchCredentials();
-    const todoId = uuid();
+    const {
+      data: { user: User },
+    } = await supabase.auth.getUser();
 
-    await db
-      .insertInto(TODOS_TABLE)
-      .values({ id: todoId, task, user_id: userID, is_complete: 0 })
-      .execute();
+    const newTodo = {
+      user_id: User?.id,
+      task: todo,
+    };
 
-    setTask('');
-    loadTodos();
+    setLoading(true);
+    const result = await supabase.from('todos').insert(newTodo).select().single();
+
+    setTodos([result.data, ...todos]);
+    setLoading(false);
+    setTodo('');
   };
 
-  const updateTodo = async (todo: Todo) => {
-    await db
-      .updateTable(TODOS_TABLE)
-      .where('id', '=', todo.id)
-      .set({ is_complete: todo.is_complete === 1 ? 0 : 1 })
-      .execute();
-    loadTodos();
+  // Get all data from the todos table
+  const loadTodos = async () => {
+    let { data } = await supabase
+      .from('todos')
+      .select('*')
+      .order('modified_at', { ascending: false });
+    console.log(data);
+
+    setTodos(data || []);
   };
 
-  const deleteTodo = async (todo: Todo) => {
-    const result = await db.deleteFrom(TODOS_TABLE).where('id', '=', todo.id).execute();
-    loadTodos();
-  };
-
-  const renderRow: ListRenderItem<any> = ({ item }) => {
+  const renderRow: ListRenderItem<Todo> = ({ item }) => {
     return (
       <AppleStyleSwipeableRow
         onDelete={() => deleteTodo(item)}
@@ -63,39 +66,58 @@ const Page = () => {
         todo={item}>
         <View style={{ padding: 12, flexDirection: 'row', gap: 10, height: 44 }}>
           <Text style={{ flex: 1 }}>{item.task}</Text>
-          {item.is_complete === 1 && (
-            <Ionicons name="checkmark-done-outline" size={24} color="#00d5ff" />
-          )}
+          {item.is_complete && <Ionicons name="checkmark-done-outline" size={24} color="#00d5ff" />}
         </View>
       </AppleStyleSwipeableRow>
     );
+  };
+
+  const updateTodo = async (todo: Todo) => {
+    const result = await supabase
+      .from('todos')
+      .update({ is_complete: !todo.is_complete })
+      .eq('id', todo.id)
+      .select()
+      .single();
+
+    const updated = todos.map((item) => {
+      if (item.id === todo.id) {
+        item.is_complete = result.data.is_complete;
+      }
+      return item;
+    });
+    setTodos(updated);
+  };
+
+  const deleteTodo = async (todo: Todo) => {
+    await supabase.from('todos').delete().eq('id', todo.id);
+    const updated = todos.filter((item) => item.id !== todo.id);
+    setTodos(updated);
   };
 
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.inputRow}>
         <TextInput
-          placeholder="Add new task"
+          placeholder="Add Todo"
           style={styles.input}
-          value={task}
-          onChangeText={setTask}
+          value={todo}
+          onChangeText={setTodo}
         />
-        <TouchableOpacity onPress={addTodo} disabled={task === ''}>
+        <TouchableOpacity onPress={addTodo} disabled={loading || todo === ''}>
           <Ionicons name="add-outline" size={24} color="#A700FF" />
         </TouchableOpacity>
       </View>
 
-      {todos && (
-        <FlatList
-          data={todos}
-          renderItem={renderRow}
-          ItemSeparatorComponent={() => (
-            <View
-              style={{ height: StyleSheet.hairlineWidth, width: '100%', backgroundColor: 'gray' }}
-            />
-          )}
-        />
-      )}
+      <FlatList
+        data={todos}
+        renderItem={renderRow}
+        ItemSeparatorComponent={() => (
+          <View
+            style={{ height: StyleSheet.hairlineWidth, width: '100%', backgroundColor: 'gray' }}
+          />
+        )}
+      />
     </View>
   );
 };
